@@ -3,7 +3,7 @@ A basic mode to setup a frame for nanorimo editing, outline left side, editing r
 
 This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines, and makes the right hand window an editing window narrowed down to the last bit of content seen using org-tree-to-indirect-buffer.
 
-When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.
+When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with :notes:
 
 There's a bunch of configurable options documented in it go have a poke.
 
@@ -92,4 +92,33 @@ You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-f
 
 Check the variables `org-nanowrimo-setup-start-date` and `org-nanowrimo-setup-end-date` to set the times of your writing, they default to all of November in whatever the current year is.  If you're word goal is different set `org-nanowrimo-setup-word-goal`, your daily goals will be calculated from these three.
 
- 
+# Example nano.org file
+
+Using tags means you can use `org-match-sparse-tree` to narrow things down to just those tags.  Tags inherit so the whole top tree never appears in your output and wordcount, nor does the node "*** Background info" because they're flagged as `:notes:`
+
+```
+* Notes :notes:
+** Characters
+*** Strange Figure
+*** A ghost
+** Places
+*** A big house
+*** A spooky forest
+** Plot points
+*** Remember to include a wolf
+
+* Story
+** Chapter One :woods:ghost:
+*** Scene One
+*** Scene Two
+*** Background info :notes:
+
+** Chapter Two :house:strangeFigure:
+*** Scene One
+*** Old Scene One :notes:
+*** Scene Two
+
+** Chapter Three :ghost:woods:strangeFigure:
+*** Scene One
+*** Scene Two
+```
