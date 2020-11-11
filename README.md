@@ -7,6 +7,16 @@ When you save the file it exports the bodies of all the trees and filters out al
 
 There's a bunch of configurable options documented in it go have a poke.
 
+# Workflow
+
+Basically get the package configured, then open up your nano.org file, your frame will split and any other config you wanted will appply.  If you have `save-place-mode` enabled it should restore where you last were.  The left hand window is your outline, just the headlines of your org file, the right hand window is for editing, by default it will show the last heading you were on.
+
+If you want to change your heading select it from the left hand window and hit `C-c C-x b` to trigger `org-tree-to-indirect-buffer` which will open in the right.  You can open either just one small section, a whole chapter, or a whole story tree at once.  Then flip back to the right hand window and edit away, you can fold/unfold trees as normal in org using the `<tab>` key.  I often have a chapter open at a time and can always change where I'm looking by going to the org headings on the left hand side and using `C-c C-x b` again to open a different part of the tree in the right hand editing buffer, this will remove the previous one from your buffer list in the default config.
+
+I usually use `C-c C-x n` to trigger `org-nanowrimo-setup-tree-to-indirect-frame` and have a second Emacs frame purely with my notes in so I can refer to those easily.
+
+Sometimes I'll want a specific tag (I'm tagging on names and places) so I'll use `C-c \` to trigger `org-match-sparse-tree` and narrow my view of the tree down to just the relevant segments.
+
 # Example config:
 ```
 (use-package org)
