@@ -35,7 +35,7 @@ If you want to change the default size of the left hand outline panel then you c
 
 This example is sort of glitchy but working.  Essentially switches the theme for the whole emacs over to running the farmhouse-dark theme to make a contrast to day-to-day editing and get my brain into writing mode.  Also switches off company-mode because it bugs me if I'm typing and trying to think of a word I want.  Finally it switches on darkroom-mode but only for the editing buffer.
 
-You can also open additional frames with org-nanowrimo-setup-tree-to-indirect-frame which is bound to "C-c C-x n" here, this is handy for having a second frame open on an org-tree of notes (places, characters, etc)
+You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-frame` which is bound to "C-c C-x n" here, this is handy for having a second frame open on an org-tree of notes (places, characters, etc)
 
 ```
 (use-package org)
@@ -90,6 +90,6 @@ You can also open additional frames with org-nanowrimo-setup-tree-to-indirect-fr
 
 # Writing at a different time to nanowrimo?  Have a different goal from 50k?
 
-Check the variables ~~~org-nanowrimo-setup-start-date~~~ and ~~~org-nanowrimo-setup-end-date~~~ to set the times of your writing, they default to all of November in whatever the current year is.  If you're word goal is different set ~~~org-nanowrimo-setup-word-goal~~~, your daily goals will be calculated from these three.
+Check the variables `org-nanowrimo-setup-start-date` and `org-nanowrimo-setup-end-date` to set the times of your writing, they default to all of November in whatever the current year is.  If you're word goal is different set `org-nanowrimo-setup-word-goal`, your daily goals will be calculated from these three.
 
  
