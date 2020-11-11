@@ -3,7 +3,7 @@ A basic mode to setup a frame for nanorimo editing, outline left side, editing r
 
 This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines, and makes the right hand window an editing window narrowed down to the last bit of content seen using org-tree-to-indirect-buffer.
 
-When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with :notes:
+When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with `:notes:` so you can use this to either comment out a subtree (be that a chapter or scene) or just have a whole tree of notes.
 
 There's a bunch of configurable options documented in it go have a poke.
 
