@@ -1,11 +1,18 @@
 # org-nanowrimo-setup-mode
-A basic mode to setup a frame for nanorimo editing, outline left side, editing right side, accurate wordcount on plain text export
+A basic mode to setup a frame for nanowrimo editing, outline left side, editing right side, accurate wordcount on plain text export
 
 This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines, and makes the right hand window an editing window narrowed down to the last bit of content seen using org-tree-to-indirect-buffer.
 
 When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with `:notes:` so you can use this to either comment out a subtree (be that a chapter or scene) or just have a whole tree of notes.
 
 There's a bunch of configurable options documented in it go have a poke.
+
+When you save it will output a message charting your progress, by default this looks like:
+```Wordcount A, B (above|below) goal C (Need D avg | Remaining: E words, F days)```
+
+Which allows you to see how many words you've got (A) and if you're hitting the general goal for the whole timespan (C) or how much you're above or below it (B), and also shows you the average amount of words you need to write daily (D) to hit your remaining word count (E) over the remaining days (F).  For example:
+
+```Wordcount 25038, 1714 above goal 23324 (Need 1560 avg | Remaining: 24962 words, 16 days)```
 
 # Example config:
 ```

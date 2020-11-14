@@ -107,12 +107,16 @@
 ;; that would do anything more useful for me:
 ;; https://github.com/alphapapa/org-sidebar
 ;;
-;; Also maybe transposing stuff instead of opening indirect buffers 
+;; Also maybe transposing stuff instead of opening indirect buffers
+;;
+;; Think about frequency analysis https://emacs.stackexchange.com/questions/13514/how-to-obtain-the-statistic-of-the-the-frequency-of-words-in-a-buffer
 
-(require 'org)
-(require 'ox)
-(require 'ox-ascii)
-(require 'org-element)
+(eval-and-compile
+  (require 'org)
+  (require 'ox)
+  (require 'ox-ascii)
+  (require 'org-element)
+  (with-no-warnings (require 'cl-lib)))
 
 (defvar org-nanowrimo-setup-path nil "Path to the .org file where your nanowrimo project will be stored.  This should point to an existing file to trigger the creation of the org-mode-hook that sets this all up")
 
@@ -146,8 +150,8 @@
 (defvar org-nanowrimo-setup-switch-off-adjustments-hook nil "Additional code to run when switching the mode off if it has been enabled, so reverting themes and so forth.  Expects a lambda.")
 
 (defvar org-nanowrimo-setup-export-count-words t "Show words after export")
-(defvar org-nanowrimo-setup-export-show-goal t "Calculate daily goals and show how export is doing for under/over shooting this")
-(defvar org-nanowrimo-setup-goal-update-timer nil "Holds the timer that is used to refresh the word count")
+(defvar org-nanowrimo-setup-export-show-goal t "Calculate daily goals and show how export is doing for under/over shooting this, this is on average over the whole time, if you don't want recalculated goals you need to set org-nanowrimo-setup-export-show-moving-goals to nil.")
+(defvar org-nanowrimo-setup-export-show-moving-goal t "Calculate daily average needed based on how much wordcount is left vs. how many days are left.  Set to nil to just show goals over the whole timespan.")
 
 
 ;; See also (org-time-convert-to-integer
@@ -167,6 +171,9 @@
 
 (defvar org-nanowrimo-setup-word-goal 50000 "Number of words you're aiming to hit between org-nanowrimo-setup-start-date and org-nanowrimo-setup-end-date")
 
+(defvar org-nanowrimo-setup-todays-goal nil "Contains the calculated goal for a day based on wordcount/length")
+(defvar org-nanowrimo-setup-days-remaining nil "Contains the calculated number of days left for working out the average remaining needed")
+(defvar org-nanowrimo-setup-goal-update-timer nil "Holds the timer that is used to refresh the word count")
 
 (defun my/org-get-tags ()
   "Dump out the tags at point as a message in the minibuffer, essentially just a wrapper with (interactive)"
@@ -345,20 +352,47 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
 
                     ;; If we're showing how the count is doing
                     ;; vs. daily averages then this runs
-                    (if org-nanowrimo-setup-export-show-goal
-                        (message "Export (%s) has %s words, %s %s goal (%s)"
-                                 output-file
-                                 curr-words
-                                 (- curr-words org-nanowrimo-setup-todays-goal)
-                                 (if (> curr-words org-nanowrimo-setup-todays-goal)
-                                     "above"
-                                   "below")
-                                 org-nanowrimo-setup-todays-goal)
+                    (cond ((and org-nanowrimo-setup-export-show-goal
+                                org-nanowrimo-setup-export-show-moving-goal)
 
-                      ;; Otherwise just show the regular count
-                      (message "Export (%s) has %s words"
-                               output-file
-                               curr-words))))))))))
+                           (let* ((remaining (- org-nanowrimo-setup-word-goal
+                                                curr-words))
+                                  (todays-goal-count (/ remaining
+                                                        org-nanowrimo-setup-days-remaining)))
+                             (message "Wordcount %s, %s %s goal %s (Need %s avg | Remaining: %s words, %s days)"
+                                      curr-words
+                                      (- curr-words
+                                         org-nanowrimo-setup-todays-goal)
+                                      (if (> curr-words
+                                             org-nanowrimo-setup-todays-goal)
+                                          "above"
+                                        "below")
+                                      org-nanowrimo-setup-todays-goal
+                                      todays-goal-count
+                                      remaining
+                                      org-nanowrimo-setup-days-remaining)))
+
+                          (org-nanowrimo-setup-export-show-goal
+                            
+                           (message "Wordcount %s, %s %s goal %s"
+                                    curr-words
+                                    
+                                    (- curr-words
+                                       org-nanowrimo-setup-todays-goal)
+                                    
+                                    (if (> curr-words
+                                           org-nanowrimo-setup-todays-goal)
+                                        "above"
+                                      "below")
+                                    
+                                     org-nanowrimo-setup-todays-goal))
+                          
+                          (t 
+                           
+                           ;; Otherwise just show the regular count
+                           (message "Wordcount %s words"
+                                    output-file
+                                    curr-words)))))))))))
 
 
 (defun org-nanowrimo-setup-output-headings ()
@@ -428,7 +462,7 @@ BACKEND is the export back-end being used, as a symbol."
 
 (defun org-nanowrimo-setup-calculate-counts (goal start-date end-date)
   "Calculate the goal word count for the day, set the org-nanowrimo-setup-todays-goal variable as a side effect"
-  (interactive)
+  (interactive "P")
   (if (and (numberp goal)
            start-date
            end-date)
@@ -436,11 +470,15 @@ BACKEND is the export back-end being used, as a symbol."
                             (time-to-days start-date)))
              (current-day (- (time-to-days (current-time))
                              (time-to-days start-date)))
+             (days-remaining (- (time-to-days end-date)
+                                (time-to-days (current-time))))
              (daily-goal (/ goal
                             total-days))
              (todays-goal (* daily-goal
                              current-day)))
-        (setq org-nanowrimo-setup-todays-goal todays-goal))))
+             (setq org-nanowrimo-setup-todays-goal todays-goal
+                   org-nanowrimo-setup-days-remaining days-remaining))))
+             
 
 
 (define-minor-mode org-nanowrimo-setup-mode
