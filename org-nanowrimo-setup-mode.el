@@ -124,6 +124,9 @@
 
 (defvar org-nanowrimo-setup-initial-sidebar-size 40 "Size of the lefthand sidebar")
 (defvar org-nanowrimo-setup-lock-outline-window-size t "Fix the outline windows width")
+(defvar org-nanowrimo-setup-outline-window-id nil "Stores the outline window ID")
+(defvar org-nanowrimo-setup-editing-window-id nil "Stores the editing window ID")
+(defvar org-nanowrimo-setup-window-configuration nil "Stores the default window configuration")
 
 (defvar org-nanowrimo-setup-export-filtered-tags "+notes" "Org tag selection string for tagged trees to filter out of the export, see: https://orgmode.org/manual/Matching-tags-and-properties.html")
 
@@ -277,8 +280,11 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
         ;; vertically, lock the outline frame if wanted, then open a
         ;; narrowed indirect buffer on the right
         (delete-other-windows)
+        (setq org-nanowrimo-setup-outline-window-id (selected-window))
         (let ((fresh-window (split-window-horizontally
                              org-nanowrimo-setup-initial-sidebar-size)))
+
+          (setq org-nanowrimo-setup-editing-window-id fresh-window)
 
           ;; Try and lock the outline window on the left if wanted
           (if org-nanowrimo-setup-lock-outline-window-size
@@ -298,8 +304,32 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
           ;; you end up with a 3 column mode.
           (select-window fresh-window)
           (if save-place-mode (save-place-find-file-hook))
+
+          ;; Open in fresh window split
           (let ((org-indirect-buffer-display 'current-window))
-            (org-tree-to-indirect-buffer))))))
+            (org-tree-to-indirect-buffer))
+
+          ;; Save the default config
+          (setq org-nanowrimo-setup-window-configuration
+                (current-window-configuration))))))
+
+(defun org-nanowrimo-setup-hide-outline ()
+  "Deletes the outline window, designed to be used as part of a toggle for hide/showing the outline in combination with org-nanowrimo-setup-reset-window-configuration"
+  (if (window-deletable-p org-nanowrimo-setup-outline-window-id)
+      (delete-window org-nanowrimo-setup-outline-window-id)))
+
+(defun org-nanowrimo-setup-reset-window-configuration ()
+  "Resets the window configuration to how it was when the mode was first established and org-nanowrimo-setup-configure-window ran"
+  (if org-nanowrimo-setup-window-configuration
+      (set-window-configuration org-nanowrimo-setup-window-configuration)))
+
+(defun org-nanowrimo-setup-outline-window-toggle ()
+  "If the current window list includes the outline then destroy that window using (org-nanowrimo-setup-hide-outline), if it doesn't exist then restore the default window configuration using (org-nanowrimo-setup-reset-window-configuration) which will reshow it, and also remove any sub windows going on."
+  (interactive)
+  (if (seq-contains (window-list) org-nanowrimo-setup-outline-window-id)
+      (org-nanowrimo-setup-hide-outline)
+    (org-nanowrimo-setup-reset-window-configuration)))
+  
 
 (defun org-nanowrimo-setup-reapply-outline ()
   "Reapplies the outline only view for the outline/left hand window"

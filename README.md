@@ -1,9 +1,11 @@
 # org-nanowrimo-setup-mode
 A basic mode to setup a frame for nanowrimo editing, outline left side, editing right side, accurate wordcount on plain text export
 
-This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines, and makes the right hand window an editing window narrowed down to the last bit of content seen using org-tree-to-indirect-buffer.
+This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines using ```outline-hide-body```, and makes the right hand window an editing window narrowed down to the last bit of content seen using ```org-tree-to-indirect-buffer```.
 
 When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with `:notes:` so you can use this to either comment out a subtree (be that a chapter or scene) or just have a whole tree of notes.
+
+You can toggle the visability of the outline window using ```org-nanowrimo-setup-outline-window-toggle```.
 
 There's a bunch of configurable options documented in it go have a poke.
 
@@ -52,7 +54,9 @@ If you want to change the default size of the left hand outline panel then you c
 
 This example is sort of glitchy but working.  Essentially switches the theme for the whole emacs over to running the farmhouse-dark theme to make a contrast to day-to-day editing and get my brain into writing mode.  Also switches off company-mode because it bugs me if I'm typing and trying to think of a word I want.  Finally it switches on darkroom-mode but only for the editing buffer.
 
-You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-frame` which is bound to "C-c C-x n" here, this is handy for having a second frame open on an org-tree of notes (places, characters, etc)
+You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-frame` which is bound to `C-c C-x n` here, this is handy for having a second frame open on an org-tree of notes (places, characters, etc)
+
+You can show and hide the outline/structure window using `C-c C-x o` which is bound to `org-nanowrimo-setup-outline-window-toggle`.
 
 ```
 (use-package org)
@@ -96,6 +100,8 @@ You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-f
       (progn
         (define-key org-mode-map (kbd "C-c C-x n")
           'org-nanowrimo-setup-tree-to-indirect-frame)
+        (define-key org-mode-map (kbd "C-c C-x o")
+          'org-nanowrimo-setup-outline-window-toggle)
         (use-package darkroom
           :ensure t
           :init (setq darkroom-text-scale-increase 0.6))
