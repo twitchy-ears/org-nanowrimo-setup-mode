@@ -313,6 +313,21 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
           (setq org-nanowrimo-setup-window-configuration
                 (current-window-configuration))))))
 
+
+
+(defun org-nanowrimo-setup-outline-buffer-p ()
+  "Tries to determine if the current buffer is the outline buffer"
+  (and (eq major-mode 'org-mode)
+       (cl-equalp buffer-file-name org-nanowrimo-setup-path)))
+
+(defun org-nanowrimo-setup-editing-buffer-p ()
+  "Tries to determine if the current buffer is one of the org-tree-to-indirect-buffer editing buffers"
+  (and (eql buffer-file-name nil)
+       (eq major-mode 'org-mode)
+       (string-match (format "%s-" org-nanowrimo-setup-file) (buffer-name))))
+
+
+
 (defun org-nanowrimo-setup-hide-outline ()
   "Deletes the outline window, designed to be used as part of a toggle for hide/showing the outline in combination with org-nanowrimo-setup-reset-window-configuration"
   (if (window-deletable-p org-nanowrimo-setup-outline-window-id)
@@ -326,15 +341,17 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
 (defun org-nanowrimo-setup-outline-window-toggle ()
   "If the current window list includes the outline then destroy that window using (org-nanowrimo-setup-hide-outline), if it doesn't exist then restore the default window configuration using (org-nanowrimo-setup-reset-window-configuration) which will reshow it, and also remove any sub windows going on."
   (interactive)
-  (if (seq-contains (window-list) org-nanowrimo-setup-outline-window-id)
+  (if (and (or (org-nanowrimo-setup-outline-buffer-p)
+               (org-nanowrimo-setup-editing-buffer-p))
+           (seq-contains (window-list) org-nanowrimo-setup-outline-window-id))
       (org-nanowrimo-setup-hide-outline)
     (org-nanowrimo-setup-reset-window-configuration)))
-  
+
+
 
 (defun org-nanowrimo-setup-reapply-outline ()
   "Reapplies the outline only view for the outline/left hand window"
-  (if (and (eq major-mode 'org-mode)
-           (cl-equalp buffer-file-name org-nanowrimo-setup-path)
+  (if (and (org-nanowrimo-setup-outline-buffer-p)
            (run-hook-with-args-until-failure
             'org-nanowrimo-setup-reapply-outline-buffer-test-function))
       
@@ -344,14 +361,14 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
 
 (defun org-nanowrimo-setup-reapply-editing ()
   "Apply visual-line-mode to the editing buffer/right hand window"
-  (if (and (eql buffer-file-name nil)
-           (eq major-mode 'org-mode)
-           (string-match (format "%s-" org-nanowrimo-setup-file) (buffer-name))
+  (if (and (org-nanowrimo-setup-editing-buffer-p)
            (run-hook-with-args-until-failure
             'org-nanowrimo-setup-reapply-editing-buffer-test-function))
       (progn
         (visual-line-mode 1)
         (run-hooks 'org-nanowrimo-setup-reapply-editing-adjustments-hook))))
+
+
 
 (defun org-nanowrimo-setup-export-txt ()
   "Exports the buffer to text, any nodes flagged with the notes filter will get stripped as will all headlines thanks to the other filtering"
