@@ -139,3 +139,13 @@ Using tags means you can use `org-match-sparse-tree` to narrow things down to ju
 *** Scene One
 *** Scene Two
 ```
+
+# Other resources:
+
+In making this and generally dinking about using Emacs for writing I was inspired by the following articles and ideas:
+
+ * https://tonyballantyne.com/EmacsWritingTips.html
+ * https://vimvalley.com/replacing-scrivener-with-emacs-and-vim/
+ * https://www.tomheon.com/2019/04/10/how-an-uber-geeky-text-mode-in-a-40-year-old-editor-saved-my-novel/
+ * https://www.reddit.com/r/orgmode/comments/ae5str/using_orgmode_for_novel_writingcreative_writing/
+ * Jay Dixit's "Emacs for Writers" video (1:01:05 long) https://www.youtube.com/watch?v=FtieBc3KptU
