@@ -156,6 +156,7 @@
 (defvar org-nanowrimo-setup-export-show-goal t "Calculate daily goals and show how export is doing for under/over shooting this, this is on average over the whole time, if you don't want recalculated goals you need to set org-nanowrimo-setup-export-show-moving-goals to nil.")
 (defvar org-nanowrimo-setup-export-show-moving-goal t "Calculate daily average needed based on how much wordcount is left vs. how many days are left.  Set to nil to just show goals over the whole timespan.")
 
+(defvar org-nanowrimo-setup-log-wordcounts nil "Will create an output file taking the base name of your .org file but with the suffix .stats, will store the date/time to saves and the word count in there")
 
 ;; See also (org-time-convert-to-integer
 ;;              (my/ymd-to-encode-time "2020-11-01"))
@@ -397,6 +398,14 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
                   (let ((curr-words (org-nanowrimo-setup-count-words (point-min)
                                                                      (point-max))))
 
+                    ;; If we're logging the wordcount do that first
+                    (if org-nanowrimo-setup-log-wordcounts
+                        (append-to-file
+                         (format "%s word count: %s\n" (format-time-string "%Y-%m-%d %H:%M:%S") curr-words)
+                         nil
+                         (format "%s.stats"
+                                 (file-name-sans-extension (expand-file-name org-nanowrimo-setup-path)))))
+
                     ;; If we're showing how the count is doing
                     ;; vs. daily averages then this runs
                     (cond ((and org-nanowrimo-setup-export-show-goal
@@ -507,6 +516,8 @@ BACKEND is the export back-end being used, as a symbol."
                          (insert org-nanowrimo-setup-export-replace-headlines-str)
                          (setq org-map-continue-from beg))))))
 
+;; FIXME I feel like there's a rounding issue here and it should be
+;; 1667 not 1666 fround needed somewhere?
 (defun org-nanowrimo-setup-calculate-counts (goal start-date end-date)
   "Calculate the goal word count for the day, set the org-nanowrimo-setup-todays-goal variable as a side effect"
   (interactive "P")
