@@ -7,14 +7,18 @@ When you save the file it exports the bodies of all the trees and filters out al
 
 You can toggle the visability of the outline window using ```org-nanowrimo-setup-outline-window-toggle```.
 
-There's a bunch of configurable options documented in it go have a poke.
-
 When you save it will output a message charting your progress, by default this looks like:
 ```Wordcount A, B (above|below) goal C (Need D avg | Remaining: E words, F days)```
 
 Which allows you to see how many words you've got (A) and if you're hitting the general goal for the whole timespan (C) or how much you're above or below it (B), and also shows you the average amount of words you need to write daily (D) to hit your remaining word count (E) over the remaining days (F).  For example:
 
 ```Wordcount 25038, 1714 above goal 23324 (Need 1560 avg | Remaining: 24962 words, 16 days)```
+
+If you want to log your wordcount for every save to a file then check ```org-nanowrimo-setup-log-wordcounts```, if this is set to t then it takes your ```org-nanowrimo-setup-path``` file, drops the .org from the end and substitutes .stats and writes the timestamp and word count in that in the format:
+
+```YYYY-MM-DD HH-MM-SS word count: NNNN```
+
+There's a bunch of configurable options documented in it go have a poke.
 
 # Workflow
 
@@ -145,6 +149,12 @@ Using tags means you can use `org-match-sparse-tree` to narrow things down to ju
 *** Scene One
 *** Scene Two
 ```
+
+# Bugs:
+
+This mode relies on ```outline-hide-body``` to setup its sidebar to only show headings in its left pane and ```org-tree-to-indirect-buffer``` to only show the section you're editing in the right pane.  However this means if you are adding things to the end of the edited section (the indirect buffer) then you will get updates appearing in the left pane after the ... that ```outline-hide-body``` leaves at the end of its narrowed regions.
+
+The best way to avoid this is to end every subtree with a single . on its own (or any other marker text you want) and then you'll always be editing above that, and hence not messing up the outline view.
 
 # Other resources:
 
