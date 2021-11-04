@@ -37,7 +37,7 @@ Sometimes I'll want a specific tag (I'm tagging on names and places) so I'll use
     :after org
 
     :init
-    (setq org-nanowrimo-setup-path (expand-file-name "~/nano2020/nano.org"))
+    (setq org-nanowrimo-setup-path (expand-file-name "~/nano2021/nano.org"))
     
     :config
     (org-nanowrimo-setup-mode))
@@ -62,19 +62,33 @@ You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-f
 
 You can show and hide the outline/structure window using `C-c C-x o` which is bound to `org-nanowrimo-setup-outline-window-toggle`.
 
+I've also got `C-c C-x l` bound to `org-nanowrimo-setup-refresh-outline` which fixes the outline view if it gets messed up without interrupting your flow
+
 ```
-(use-package org)
-(use-package nanowrimo-setup-mode
+(use-package org-nanowrimo-setup-mode
   :after org
   :init
-  (setq org-nanowrimo-setup-path (expand-file-name
-                           "~/nano2020/nano.org"))
+  (setq org-nanowrimo-setup-path (expand-file-name "~/nano2021/nano.org")
+        org-nanowrimo-setup-log-wordcounts t
+        org-nanowrimo-setup-initial-sidebar-size 20
+        org-nanowrimo-setup-late-night-theme-start-hour 18
+        org-nanowrimo-setup-late-night-theme-end-hour 7)
+
+  (defun my/org-nanowrimo-setup-late-night-theme-p ()
+    "Tests if we should be using the late night theme, relies on checking the variables org-nanowrimo-setup-late-night-theme-start-hour and org-nanowrimo-setup-late-night-theme-end-hour against the current hour, so setting these to 18 and 7 respectively means your late night theme will be switched to for all editing sessions started between 18:00 and 07:00 in the morning"
+    (interactive)
+    (let ((curr-hour (string-to-number
+                      (format-time-string "%H" (current-time)))))
+      (or (>= curr-hour org-nanowrimo-setup-late-night-theme-start-hour)
+          (<= curr-hour org-nanowrimo-setup-late-night-theme-end-hour))))
 
   ;; Outline (left hand pane) tests/adjustments
   (add-hook 'org-nanowrimo-setup-reapply-outline-adjustments-hook
             (lambda ()
-              (set-face-background 'hl-line "grey10")
-              (set-face-attribute 'isearch nil :background "DarkGreen")))
+              (if (my/org-nanowrimo-setup-late-night-theme-p)
+                  (progn
+                    (set-face-background 'hl-line "grey10")
+                    (set-face-attribute 'isearch nil :background "DarkGreen")))))
 
   ;; Editing (right hand pane) tests and adjustments
   (add-hook 'org-nanowrimo-setup-reapply-editing-buffer-test-function
@@ -83,35 +97,57 @@ You can show and hide the outline/structure window using `C-c C-x o` which is bo
   (add-hook 'org-nanowrimo-setup-reapply-editing-adjustments-hook
             (lambda ()
               (progn
+                ;; (load-theme-buffer-local 'farmhouse-dark (current-buffer))
+                ;; (centered-cursor-mode)
                 (company-mode -1)
                 (make-local-variable 'scroll-margin)
                 (setq scroll-margin 5)
                 (if (not darkroom-mode)
-                    (darkroom-mode)))))
+                    (darkroom-mode 1)))))
 
   ;; Theme tweaks/changes
   (add-hook 'org-nanowrimo-setup-theme-adjustments-hook
             (lambda ()
               (progn
-                (load-theme 'farmhouse-dark)
-                (set-face-attribute 'hl-line nil
-                                    :inherit nil
-                                    :background "gray10")
+                ;; Load a custom theme based on time if 19:00 or past,
+                ;; but also tweak some of the colour scheme
+                (if (my/org-nanowrimo-setup-late-night-theme-p)
+                    (progn 
+                      (if custom-enabled-themes
+                          (disable-theme custom-enabled-themes))
+                      (load-theme 'farmhouse-dark)
+                      (set-face-attribute 'hl-line nil
+                                          :inherit nil
+                                          :background "gray10")))
                 (company-mode -1))))
-  
+
+  ;; Setting up binds by hand in the :config section to avoid messing
+  ;; up the org binds on machines where the file is not present for
+  ;; shipping this config around.
+  ;;
+  ;; :bind (:map org-mode-map (("C-c C-x l" . (my/org-nanowrimo-setup-mode-refresh-outline))))
+
   :config
   (if (file-exists-p org-nanowrimo-setup-path)
       (progn
+        
+        ;; Keybinds only being put in place if the file exists.
         (define-key org-mode-map (kbd "C-c C-x n")
           'org-nanowrimo-setup-tree-to-indirect-frame)
         (define-key org-mode-map (kbd "C-c C-x o")
           'org-nanowrimo-setup-outline-window-toggle)
+        (define-key org-mode-map (kbd "C-c C-x l")
+          'org-nanowrimo-setup-refresh-outline)
+
+        ;; Similarly only require packages if file exists
         (use-package darkroom
           :ensure t
-          :init (setq darkroom-text-scale-increase 0.6))
+          :init (setq darkroom-text-scale-increase 0.8))
         (use-package "farmhouse-theme"
           :ensure t
           :defer t)
+
+        ;; Switch mode on
         (org-nanowrimo-setup-mode))))
 ```
 
@@ -127,34 +163,57 @@ Using tags means you can use `org-match-sparse-tree` to narrow things down to ju
 * Notes :notes:
 ** Characters
 *** Strange Figure
+:END:
 *** A ghost
+:END:
 ** Places
 *** A big house
+:END:
 *** A spooky forest
+:END:
 ** Plot points
 *** Remember to include a wolf
+:END:
 
 * Story
 ** Chapter One :woods:ghost:
 *** Scene One
+:END:
 *** Scene Two
+:END:
 *** Background info :notes:
+:END:
 
 ** Chapter Two :house:strangeFigure:
 *** Scene One
+:END:
 *** Old Scene One :notes:
+:END:
 *** Scene Two
+:END:
 
 ** Chapter Three :ghost:woods:strangeFigure:
 *** Scene One
+:END:
 *** Scene Two
+:END:
 ```
 
 # Bugs:
 
-This mode relies on ```outline-hide-body``` to setup its sidebar to only show headings in its left pane and ```org-tree-to-indirect-buffer``` to only show the section you're editing in the right pane.  However this means if you are adding things to the end of the edited section (the indirect buffer) then you will get updates appearing in the left pane after the ... that ```outline-hide-body``` leaves at the end of its narrowed regions.
+This mode relies on ```outline-hide-body``` to setup its sidebar to only show headings in its left pane and ```org-tree-to-indirect-buffer``` to only show the section you're editing in the right pane.  However this means if you are adding things to the end of the edited section (the indirect buffer) then you will get updates appearing in the left pane after the ... that ```outline-hide-body``` leaves at the end of its narrowed regions, since these exist between the narrowed selections (I think) they appear straight in the buffer.
 
-The best way to avoid this is to end every subtree with a single . on its own (or any other marker text you want) and then you'll always be editing above that, and hence not messing up the outline view.
+The best way to avoid this is to end every subtree with an [Org drawer](https://orgmode.org/manual/Drawers.html) on its own, then you'll always be editing above that, and hence not messing up the outline view, so at the end of chapters write ```:END:``` and that'll fix it, it also will get filtered out by the Org to text output for your wordcount and not effect it, this is included in the example above, but explained here.
+
+```
+* Story :story:
+** Chapter One
+  And all your writing goes here, so you're always inside the hidden region.
+:END:
+** Chapter Two
+  The second chapter goes here likewise.  Thanks weird buggy outline mode.
+:END:
+```
 
 # Other resources:
 

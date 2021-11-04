@@ -327,7 +327,16 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
        (eq major-mode 'org-mode)
        (string-match (format "%s-" org-nanowrimo-setup-file) (buffer-name))))
 
-
+(defun org-nanowrimo-setup-refresh-outline ()
+  "Trigger a refresh of the outline mode, probably works fine but may go wrong if you have multiple buffers visiting the same file"
+  (interactive)
+  (save-excursion
+    (save-window-excursion
+      (let ((nano-window (get-buffer-window
+                          (get-file-buffer org-nanowrimo-setup-path) t)))
+        (select-window nano-window)
+        (outline-show-all)
+        (outline-hide-body)))))
 
 (defun org-nanowrimo-setup-hide-outline ()
   "Deletes the outline window, designed to be used as part of a toggle for hide/showing the outline in combination with org-nanowrimo-setup-reset-window-configuration"
@@ -347,8 +356,6 @@ If already run will set org-nanowrimo-setup-have-configured-frame and refuse to 
            (seq-contains (window-list) org-nanowrimo-setup-outline-window-id))
       (org-nanowrimo-setup-hide-outline)
     (org-nanowrimo-setup-reset-window-configuration)))
-
-
 
 (defun org-nanowrimo-setup-reapply-outline ()
   "Reapplies the outline only view for the outline/left hand window"
