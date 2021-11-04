@@ -1,10 +1,10 @@
 ;;; org-nanowrimo-setup-mode.el --- A basic mode to setup a frame for nanorimo editing, outline left side, editing right side, accurate wordcount on plain text export
 
-;; Copyright 2020 - Twitchy Ears
+;; Copyright 2020, 2021 - Twitchy Ears
 
 ;; Author: Twitchy Ears https://github.com/twitchy-ears/
 ;; URL: https://github.com/twitchy-ears/org-nanowrimo-setup-mode
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires ((emacs "26") (org "9"))
 ;; Keywords: org nanowrimo
 
@@ -33,6 +33,11 @@
 ;;; History
 ;;
 ;; 2020-11-11 - initial version
+;; 2021-11-04 - a few small tidy ups, optional wordcount logging,
+;;              and improved documentation including the note to use
+;;              :END: property drawers at the end of your chapters and
+;;              things to stop the outline getting messed up when
+;;              you're adding text above it.
 
 ;; Essentially all you need is this:
 ;; (use-package org)
@@ -47,17 +52,30 @@
 ;;
 ;; A longer example includes:
 ;; (use-package org)
-;; (use-package nanowrimo-setup-mode
+;; (use-package org-nanowrimo-setup-mode
 ;;   :after org
 ;;   :init
-;;   (setq org-nanowrimo-setup-path (expand-file-name
-;;                            "~/nano2020/nano.org"))
+;;   (setq org-nanowrimo-setup-path (expand-file-name "~/nano2021/nano.org")
+;;         org-nanowrimo-setup-log-wordcounts t
+;;         org-nanowrimo-setup-initial-sidebar-size 20
+;;         org-nanowrimo-setup-late-night-theme-start-hour 18
+;;         org-nanowrimo-setup-late-night-theme-end-hour 7)
+;; 
+;;   (defun my/org-nanowrimo-setup-late-night-theme-p ()
+;;     "Tests if we should be using the late night theme, relies on checking the variables org-nanowrimo-setup-late-night-theme-start-hour and org-nanowrimo-setup-late-night-theme-end-hour against the current hour, so setting these to 18 and 7 respectively means your late night theme will be switched to for all editing sessions started between 18:00 and 07:00 in the morning"
+;;     (interactive)
+;;     (let ((curr-hour (string-to-number
+;;                       (format-time-string "%H" (current-time)))))
+;;       (or (>= curr-hour org-nanowrimo-setup-late-night-theme-start-hour)
+;;           (<= curr-hour org-nanowrimo-setup-late-night-theme-end-hour))))
 ;; 
 ;;   ;; Outline (left hand pane) tests/adjustments
 ;;   (add-hook 'org-nanowrimo-setup-reapply-outline-adjustments-hook
 ;;             (lambda ()
-;;               (set-face-background 'hl-line "grey10")
-;;               (set-face-attribute 'isearch nil :background "DarkGreen")))
+;;               (if (my/org-nanowrimo-setup-late-night-theme-p)
+;;                   (progn
+;;                     (set-face-background 'hl-line "grey10")
+;;                     (set-face-attribute 'isearch nil :background "DarkGreen")))))
 ;; 
 ;;   ;; Editing (right hand pane) tests and adjustments
 ;;   (add-hook 'org-nanowrimo-setup-reapply-editing-buffer-test-function
@@ -66,48 +84,74 @@
 ;;   (add-hook 'org-nanowrimo-setup-reapply-editing-adjustments-hook
 ;;             (lambda ()
 ;;               (progn
+;;                 ;; (load-theme-buffer-local 'farmhouse-dark (current-buffer))
+;;                 ;; (centered-cursor-mode)
 ;;                 (company-mode -1)
 ;;                 (make-local-variable 'scroll-margin)
 ;;                 (setq scroll-margin 5)
 ;;                 (if (not darkroom-mode)
-;;                     (darkroom-mode)))))
+;;                     (darkroom-mode 1)))))
 ;; 
 ;;   ;; Theme tweaks/changes
 ;;   (add-hook 'org-nanowrimo-setup-theme-adjustments-hook
 ;;             (lambda ()
 ;;               (progn
-;;                 (load-theme 'farmhouse-dark)
-;;                 (set-face-attribute 'hl-line nil
-;;                                     :inherit nil
-;;                                     :background "gray10")
+;;                 ;; Load a custom theme based on time if 19:00 or past,
+;;                 ;; but also tweak some of the colour scheme
+;;                 (if (my/org-nanowrimo-setup-late-night-theme-p)
+;;                     (progn 
+;;                       (if custom-enabled-themes
+;;                           (disable-theme custom-enabled-themes))
+;;                       (load-theme 'farmhouse-dark)
+;;                       (set-face-attribute 'hl-line nil
+;;                                           :inherit nil
+;;                                           :background "gray10")))
 ;;                 (company-mode -1))))
-;;   
+;; 
+;;   ;; Setting up binds by hand in the :config section to avoid messing
+;;   ;; up the org binds on machines where the file is not present for
+;;   ;; shipping this config around.
+;;   ;;
+;;   ;; :bind (:map org-mode-map (("C-c C-x l" . (my/org-nanowrimo-setup-mode-refresh-outline))))
+;; 
 ;;   :config
 ;;   (if (file-exists-p org-nanowrimo-setup-path)
 ;;       (progn
+;;         
+;;         ;; Keybinds only being put in place if the file exists.
 ;;         (define-key org-mode-map (kbd "C-c C-x n")
 ;;           'org-nanowrimo-setup-tree-to-indirect-frame)
+;;         (define-key org-mode-map (kbd "C-c C-x o")
+;;           'org-nanowrimo-setup-outline-window-toggle)
+;;         (define-key org-mode-map (kbd "C-c C-x l")
+;;           'org-nanowrimo-setup-refresh-outline)
+;; 
+;;         ;; Similarly only require packages if file exists
 ;;         (use-package darkroom
 ;;           :ensure t
-;;           :init (setq darkroom-text-scale-increase 0.6))
+;;           :init (setq darkroom-text-scale-increase 0.8))
 ;;         (use-package "farmhouse-theme"
 ;;           :ensure t
 ;;           :defer t)
+;; 
+;;         ;; Switch mode on
 ;;         (org-nanowrimo-setup-mode))))
 ;;
 ;;
 ;; It should be noted that this will take over the frame its in and
 ;; cause some havoc in its wake (fullscreening stuff creating splits,
 ;; and optionally changing themes around) it will also export a plain
-;; text version to "~/nano2020/nano.txt" every time you write a
-;; change to the .org file, this allows you to have accurate wordcount
-;; without any weird forms of filtering the current buffer
+;; text version to "~/nano2021/nano.txt" every time you write a change
+;; to the .org file, and append a line with your word count in and the
+;; timestamp to "~/nano2021/nano.stats", this allows you to have
+;; accurate wordcount without any weird forms of filtering the current
+;; buffer
 
 ;; TODO: This should probably be looking at org-sidebar to see if
 ;; that would do anything more useful for me:
 ;; https://github.com/alphapapa/org-sidebar
 ;;
-;; Also maybe transposing stuff instead of opening indirect buffers
+;; Also maybe transclusion stuff instead of opening indirect buffers or to break things up across multiple org files? see https://github.com/nobiot/org-transclusion
 ;;
 ;; Think about frequency analysis https://emacs.stackexchange.com/questions/13514/how-to-obtain-the-statistic-of-the-the-frequency-of-words-in-a-buffer
 
