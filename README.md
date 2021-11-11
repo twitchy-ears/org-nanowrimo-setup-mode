@@ -1,11 +1,9 @@
 # org-nanowrimo-setup-mode
 A basic mode to setup a frame for nanowrimo editing, outline left side, editing right side, accurate wordcount on plain text export
 
-This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines using ```outline-hide-body```, and makes the right hand window an editing window narrowed down to the last bit of content seen using ```org-tree-to-indirect-buffer```.
+This is not a real solid package, this is just me breaking out my nanowrimo-setup.  Essentially you specify an org file for your nanowrimo project then when you open that file it takes over the frame, splits it into two windows, makes the left hand window a structure overview of just headlines using ```outline-hide-body```, and makes the right hand window an editing window narrowed down to the current subtree in your org file as an indirect buffer.
 
 When you save the file it exports the bodies of all the trees and filters out all the headlines, dumping it to a .txt file version of the .org file, then it counts the words for that.  It also removes any subtree that is tagged with `:notes:` so you can use this to either comment out a subtree (be that a chapter or scene) or just have a whole tree of notes.
-
-You can toggle the visability of the outline window using ```org-nanowrimo-setup-outline-window-toggle```.
 
 When you save it will output a message charting your progress, by default this looks like:
 ```Wordcount A, B (above|below) goal C (Need D avg | Remaining: E words, F days)```
@@ -22,11 +20,13 @@ There's a bunch of configurable options documented in it go have a poke.
 
 # Workflow
 
-Basically get the package configured, then open up your nano.org file, your frame will split and any other config you wanted will appply.  If you have `save-place-mode` enabled it should restore where you last were.  The left hand window is your outline, just the headlines of your org file, the right hand window is for editing, by default it will show the last heading you were on.
+Basically get the package configured, then open up your nano.org file, your frame will full-screen and split, and any other config you wanted will appply.  If you have `save-place-mode` enabled it should restore where you last were.  The left hand window is your outline, just the headlines of your org file, the right hand window is for editing, by default it will show the last heading you were on.
 
-If you want to change your heading select it from the left hand window and hit `C-c C-x b` to trigger `org-tree-to-indirect-buffer` which will open in the right.  You can open either just one small section, a whole chapter, or a whole story tree at once.  Then flip back to the right hand window and edit away, you can fold/unfold trees as normal in org using the `<tab>` key.  I often have a chapter open at a time and can always change where I'm looking by going to the org headings on the left hand side and using `C-c C-x b` again to open a different part of the tree in the right hand editing buffer, this will remove the previous one from your buffer list in the default config.
+If you want to change your heading select it from the left hand window and hit `C-c C-x o` to trigger `org-nanowrimo-setup-tree-to-editing-buffer` which will open in the right.  You can open either just one small section, a whole chapter, or a whole story tree at once.  Then flip back to the right hand window and edit away, you can fold/unfold trees as normal in org using the `<tab>` key.  I often have a chapter open at a time and can always change where I'm looking by going to the org headings on the left hand side and using `C-c C-x o` again to open a different part of the tree in the right hand editing buffer, this will remove the previous one from your buffer list in the default config.
 
 I usually use `C-c C-x n` to trigger `org-nanowrimo-setup-tree-to-indirect-frame` and have a second Emacs frame purely with my notes in so I can refer to those easily.
+
+You can also use `C-c C-x t` to toggle the outline window on the left in and out of existence, this can be handy for smaller terminals, if its display gets messed up use `C-c C-x l` to cause it to redisplay as it starts.
 
 Sometimes I'll want a specific tag (I'm tagging on names and places) so I'll use `C-c \` to trigger `org-match-sparse-tree` and narrow my view of the tree down to just the relevant segments.
 
@@ -48,7 +48,7 @@ If you don't want it attempting to fullscreen your emacs use:
 (remove-hook 'org-nanowrimo-setup-gui-adjustments-hook #'toggle-frame-fullscreen)
 ```
 
-If you want to change the default size of the left hand outline panel then you can change that, default value is 40 which is chosen to work for my fonts.
+If you want to change the default size of the left hand outline panel then you can change that, default value is 20 which is chosen to work for my fonts.
 ```
 (setq org-nanowrimo-setup-initial-sidebar-size X)
 ```
@@ -57,12 +57,6 @@ If you want to change the default size of the left hand outline panel then you c
 # More detailed example config:
 
 This example is sort of glitchy but working.  Essentially switches the theme for the whole emacs over to running the farmhouse-dark theme to make a contrast to day-to-day editing and get my brain into writing mode.  Also switches off company-mode because it bugs me if I'm typing and trying to think of a word I want.  Finally it switches on darkroom-mode but only for the editing buffer.
-
-You can also open additional frames with `org-nanowrimo-setup-tree-to-indirect-frame` which is bound to `C-c C-x n` here, this is handy for having a second frame open on an org-tree of notes (places, characters, etc)
-
-You can show and hide the outline/structure window using `C-c C-x o` which is bound to `org-nanowrimo-setup-outline-window-toggle`.
-
-I've also got `C-c C-x l` bound to `org-nanowrimo-setup-refresh-outline` which fixes the outline view if it gets messed up without interrupting your flow
 
 ```
 (use-package org-nanowrimo-setup-mode
@@ -121,24 +115,10 @@ I've also got `C-c C-x l` bound to `org-nanowrimo-setup-refresh-outline` which f
                                           :background "gray10")))
                 (company-mode -1))))
 
-  ;; Setting up binds by hand in the :config section to avoid messing
-  ;; up the org binds on machines where the file is not present for
-  ;; shipping this config around.
-  ;;
-  ;; :bind (:map org-mode-map (("C-c C-x l" . (my/org-nanowrimo-setup-mode-refresh-outline))))
-
   :config
   (if (file-exists-p org-nanowrimo-setup-path)
       (progn
         
-        ;; Keybinds only being put in place if the file exists.
-        (define-key org-mode-map (kbd "C-c C-x n")
-          'org-nanowrimo-setup-tree-to-indirect-frame)
-        (define-key org-mode-map (kbd "C-c C-x o")
-          'org-nanowrimo-setup-outline-window-toggle)
-        (define-key org-mode-map (kbd "C-c C-x l")
-          'org-nanowrimo-setup-refresh-outline)
-
         ;; Similarly only require packages if file exists
         (use-package darkroom
           :ensure t
@@ -201,7 +181,7 @@ Using tags means you can use `org-match-sparse-tree` to narrow things down to ju
 
 # Bugs:
 
-This mode relies on ```outline-hide-body``` to setup its sidebar to only show headings in its left pane and ```org-tree-to-indirect-buffer``` to only show the section you're editing in the right pane.  However this means if you are adding things to the end of the edited section (the indirect buffer) then you will get updates appearing in the left pane after the ... that ```outline-hide-body``` leaves at the end of its narrowed regions, since these exist between the narrowed selections (I think) they appear straight in the buffer.
+This mode relies on ```outline-hide-body``` to setup its sidebar to only show headings in its left pane and an indirect buffer in the right (editing) pane.  However this means if you are adding things to the end of the edited section (the indirect buffer) then you will get updates appearing in the left pane after the ... that ```outline-hide-body``` leaves at the end of its narrowed regions, since these exist between the narrowed selections (I think) they appear straight in the buffer.
 
 The best way to avoid this is to end every subtree with an [Org drawer](https://orgmode.org/manual/Drawers.html) on its own, then you'll always be editing above that, and hence not messing up the outline view, so at the end of chapters write ```:END:``` and that'll fix it, it also will get filtered out by the Org to text output for your wordcount and not effect it, this is included in the example above, but explained here.
 
