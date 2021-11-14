@@ -1,4 +1,4 @@
-;;; org-nanowrimo-setup-mode.el --- Minor mode for nanorimo editing with outline, editing, and accurate wordcount
+;;; org-nanowrimo-setup-mode.el --- Minor mode for nanorimo editing with outline, editing, and accurate wordcount -*- lexical-binding: t -*-
 
 ;; Copyright 2020, 2021 - Twitchy Ears
 
@@ -143,6 +143,8 @@
 
 ;; TODO:
 ;;
+;; Change a lot of the variables to use defcustom
+;; 
 ;; Look at using mouse-3 on the org-mode headers to open them in the editing window perhaps?
 ;; 
 ;; This should probably be looking at org-sidebar to see if
@@ -268,13 +270,14 @@ frame: (lambda () (set-frame-size (selected-frame) 160 45))")
   "Rework of 'org-tree-to-indirect-buffer' that maintains one editing buffer.
 It closes the current indirect buffer in the right hand editing pane and opens
 a fresh indirect buffer over the top of whatevers in the editing pane,
-which is positioned on the right hand side.
+which is positioned on the right hand side.  If this window is missign it will
+use the function 'org-nanowrimo-setup-reset-window-configuration' to recereate
+the original window setup, destroying any other windows created by the user.
 
 Takes an optional ARG and ignores it."
   (interactive)
       (let* ((cbuf (current-buffer))
-             (cwin (selected-window))
-             (origpos (point))
+             ;; (cwin (selected-window))
              (heading nil)
              (newbuf nil)
              (newbuf-name nil))
@@ -293,6 +296,11 @@ Takes an optional ARG and ignores it."
                                        (buffer-name cbuf)
                                        heading))
                   newbuf (make-indirect-buffer cbuf newbuf-name t))))
+
+        ;; oops we broke our window setup?  Force a reset, this is
+        ;; perhaps a bit more destructive than we'd like
+        (if (not (seq-contains (window-list) org-nanowrimo-setup-editing-window-id))
+            (org-nanowrimo-setup-reset-window-configuration))
         
         ;; Hop to our editing window
         (if org-nanowrimo-setup-editing-window-id
@@ -309,7 +317,8 @@ Takes an optional ARG and ignores it."
         (org-show-subtree)
         
         ;; Kill the old buffer
-        (if org-nanowrimo-setup-editing-buffer-name
+        (if (and org-nanowrimo-setup-editing-buffer-name
+                 (seq-contains (buffer-list) org-nanowrimo-setup-editing-buffer-name))
             (kill-buffer org-nanowrimo-setup-editing-buffer-name))
 
         ;; Set us up as the new buffer, need to set the variable first
@@ -352,6 +361,7 @@ Takes an optional ARG and ignores it."
 
 (defun org-nanowrimo-setup-reset-window-configuration ()
   "Reset the window configuration to how it was when the mode was first established and 'org-nanowrimo-setup-configure-window' ran."
+  (interactive)
   (if org-nanowrimo-setup-window-configuration
       (set-window-configuration org-nanowrimo-setup-window-configuration)))
 
@@ -503,9 +513,10 @@ hook in case the user has any additonal checks."
          (message "Header '%s' (%s)" (car kill-ring) org-scanner-tags))))))
 
 
-(defun org-nanowrimo-setup-export-filtered-tags-removal (backend)
+(defun org-nanowrimo-setup-export-filtered-tags-removal (&optional backend)
   "Remove all headlines in the current buffer.
-BACKEND is the export back-end being used, as a symbol."
+BACKEND is the export back-end being used, as a symbol, this function
+does not use it."
   ;; org-cut-subtree *should* work but I don't think it sets
   ;; org-map-continue properly which explains why its not a very
   ;; simple fix.
@@ -540,7 +551,7 @@ BACKEND is the export back-end being used, as a symbol."
    org-nanowrimo-setup-export-filtered-tags))
 
 
-(defun org-nanowrimo-setup-headline-removal (backend)
+(defun org-nanowrimo-setup-headline-removal (&optional backend)
   "Remove the headlines from the output so its just pure body text.
 
 This is based on the example from the org manual:
@@ -683,6 +694,10 @@ and saying 'y'"
           ;; hook manually, this is kind of messy.
           (if save-place-mode (save-place-find-file-hook))
 
+          ;; Sometimes we get the lines all shoved over so centre back
+          ;; on the left.
+          (org-beginning-of-line)
+
           ;; Select the new window, then open the current tree as an
           ;; indirect narrowed buffer in there specifically.  If you
           ;; don't do it this way around then it works fine for GUI
@@ -710,8 +725,10 @@ and saying 'y'"
   nil
   nil
   `((,(kbd "C-c C-x o") . org-nanowrimo-setup-tree-to-editing-buffer)
+    ;; (,(kbd "M-<mouse-down-1>") . org-nanowrimo-setup-tree-to-editing-buffer)
     (,(kbd "C-c C-x n") . org-nanowrimo-setup-tree-to-indirect-frame)
-    (,(kbd "C-c C-x t") . org-nanowrimo-setup-tree-outline-window-toggle)
+    (,(kbd "C-c C-x t") . org-nanowrimo-setup-outline-window-toggle)
+    (,(kbd "C-c C-x r") . org-nanowrimo-setup-reset-window-configuration)
     (,(kbd "C-c C-x l") . org-nanowrimo-setup-tree-refresh-outline))
   :global t
   (if org-nanowrimo-setup-mode
@@ -729,6 +746,13 @@ and saying 'y'"
               (setq org-nanowrimo-setup-file (file-name-nondirectory org-nanowrimo-setup-path))
 
               ;; And hook into org-mode
+              ;; This should probably be
+              ;; (add-to-list 'auto-mode-alist '(org-nanowrimo-setup-path . org-nanowrimo-mode))
+              ;; Then just ending in calling org-nanowrimo-setup-configure-window here when the mode is enabled.
+
+              ;;(define-key org-mode-map (kbd "M-<mouse-down-1>")
+              ;;  'org-nanowrimo-setup-tree-to-indirect-frame)
+
               (add-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window))
 
           (error (format "Invalid org-nanowrimo-setup-path (%s), unset or non-existant" org-nanowrimo-setup-path))))
