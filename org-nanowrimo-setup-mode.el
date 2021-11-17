@@ -276,56 +276,70 @@ the original window setup, destroying any other windows created by the user.
 
 Takes an optional ARG and ignores it."
   (interactive)
-      (let* ((cbuf (current-buffer))
-             ;; (cwin (selected-window))
-             (heading nil)
-             (newbuf nil)
-             (newbuf-name nil))
 
-        ;; Get the details inside a save-excursion/restriction as this
-        ;; means moving around in the outline buffer and we'd like to
-        ;; prevent this, however we *do* want to move around in the
-        ;; rest of the function so this is the only bit in a save.
-        (save-excursion
-          (save-restriction
-            (setq
-                  heading (org-get-heading 'no-tags)
-                  
-                  newbuf-name (generate-new-buffer-name
-                               (format "Indirect %s - %s"
-                                       (buffer-name cbuf)
-                                       heading))
-                  newbuf (make-indirect-buffer cbuf newbuf-name t))))
+  ;; First off we probably don't want to be calling this from the
+  ;; editing window or it'll try and reopen strange indirect of
+  ;; indirect buffers.  At least by name.
+  (if (eql (selected-window) org-nanowrimo-setup-editing-window-id)
+      (select-window org-nanowrimo-setup-outline-window-id))
 
-        ;; oops we broke our window setup?  Force a reset, this is
-        ;; perhaps a bit more destructive than we'd like
-        (if (not (seq-contains (window-list) org-nanowrimo-setup-editing-window-id))
-            (org-nanowrimo-setup-reset-window-configuration))
-        
-        ;; Hop to our editing window
-        (if org-nanowrimo-setup-editing-window-id
-            (select-window org-nanowrimo-setup-editing-window-id)
-          (other-window 1))
-
-        ;; Switch the editing window over to looking at the new
-        ;; buffer, make sure its narrowed correctly, so widen to all,
-        ;; then restrict to the current subtree and make sure you show
-        ;; it or it inherits being folded by the outline view.
-        (switch-to-buffer newbuf)
-        (widen)
-        (org-narrow-to-subtree)
-        (org-show-subtree)
-        
-        ;; Kill the old buffer
-        (if (and org-nanowrimo-setup-editing-buffer-name
-                 (seq-contains (buffer-list) org-nanowrimo-setup-editing-buffer-name))
-            (kill-buffer org-nanowrimo-setup-editing-buffer-name))
-
-        ;; Set us up as the new buffer, need to set the variable first
-        ;; so we're recognised correctly.
-        (setq org-nanowrimo-setup-editing-buffer-name newbuf-name)
-        ;; (message "Am I an editing buffer? %s" (org-nanowrimo-setup-editing-buffer-p))
-        (org-nanowrimo-setup-reapply-editing)))
+  ;; Okay that done, let's open an indirect buffer named after the
+  ;; nearest org headline and do some narrowing, and hopefully put it
+  ;; in the editing window and kill the old one.
+  (let* ((cbuf (current-buffer))
+         ;; (cwin (selected-window))
+         (heading nil)
+         (newbuf nil)
+         (newbuf-name nil))
+    
+    ;; Get the details inside a save-excursion/restriction as this
+    ;; means moving around in the outline buffer and we'd like to
+    ;; prevent this, however we *do* want to move around in the
+    ;; rest of the function so this is the only bit in a save.
+    (save-excursion
+      (save-restriction
+        (setq
+         heading (org-get-heading 'no-tags)
+         
+         newbuf-name (generate-new-buffer-name
+                      (format "Indirect %s - %s"
+                              (buffer-name cbuf)
+                              heading))
+         newbuf (make-indirect-buffer cbuf newbuf-name t))))
+    
+    ;; (message "New editing buffer '%s'" newbuf-name)
+    
+    ;; oops we broke our window setup?  Force a reset, this is
+    ;; perhaps a bit more destructive than we'd like
+    (if (not (seq-contains (window-list) org-nanowrimo-setup-editing-window-id))
+        (org-nanowrimo-setup-reset-window-configuration))
+    
+    ;; Hop to our editing window
+    (if org-nanowrimo-setup-editing-window-id
+        (select-window org-nanowrimo-setup-editing-window-id)
+      (other-window 1))
+    
+    ;; Switch the editing window over to looking at the new
+    ;; buffer, make sure its narrowed correctly, so widen to all,
+    ;; then restrict to the current subtree and make sure you show
+    ;; it or it inherits being folded by the outline view.
+    (switch-to-buffer newbuf)
+    (widen)
+    (org-narrow-to-subtree)
+    (org-show-subtree)
+    
+    ;; Kill the old buffer, theoretically this returns a buffer object
+    ;; into the and but also it evaluates true neough for this
+    ;; trick to work.
+    (when (and org-nanowrimo-setup-editing-buffer-name
+               (get-buffer org-nanowrimo-setup-editing-buffer-name))
+      (kill-buffer org-nanowrimo-setup-editing-buffer-name))
+    
+    ;; Set us up as the new buffer, need to set the variable first
+    ;; so we're recognised correctly.
+    (setq org-nanowrimo-setup-editing-buffer-name (buffer-name))
+    ;; (message "Am I an editing buffer? %s" (org-nanowrimo-setup-editing-buffer-p))
+    (org-nanowrimo-setup-reapply-editing)))
 
 
 (defun org-nanowrimo-setup-outline-buffer-p ()
