@@ -127,6 +127,16 @@ This example is sort of glitchy but working.  Essentially switches the theme for
           :ensure t
           :defer t)
 
+        ;; Open up the first heading called "Notes" in a fresh frame
+        (defun my/org-nanowrimo-setup-open-notes ()
+          (interactive)
+          (if (window-system)
+              (org-nanowrimo-setup-tree-to-indirect-frame-by-name "Notes")))
+
+        ;; Open notes after main file
+        (add-hook 'org-nanowrimo-setup-end-of-configure-window-hook
+                  #'my/org-nanowrimo-setup-open-notes)
+
         ;; Switch mode on
         (org-nanowrimo-setup-mode))))
 ```

@@ -128,6 +128,16 @@
 ;;           :ensure t
 ;;           :defer t)
 ;; 
+;;         ;; Open up the first heading called "Notes" in a fresh frame
+;;         (defun my/org-nanowrimo-setup-open-notes ()
+;;           (interactive)
+;;           (if (window-system)
+;;               (org-nanowrimo-setup-tree-to-indirect-frame-by-name "Notes")))
+;; 
+;;         ;; Open notes after main file
+;;         (add-hook 'org-nanowrimo-setup-end-of-configure-window-hook
+;;                   #'my/org-nanowrimo-setup-open-notes)
+;; 
 ;;         ;; Switch mode on
 ;;         (org-nanowrimo-setup-mode))))
 ;;
@@ -200,6 +210,10 @@ As tested by (window-system).  Alternative ideas include just resizing the
 frame: (lambda () (set-frame-size (selected-frame) 160 45))")
 (add-hook 'org-nanowrimo-setup-gui-adjustments-hook #'toggle-frame-fullscreen)
 
+(defvar org-nanowrimo-setup-end-of-configure-window-hook
+  nil
+  "Hook run at the end of 'org-nanowrimo-setup-configure-window' after the window has been split and everything largely setup, useful for opening heading windows by name with 'org-nanowrimo-setup-tree-to-indirect-frame-by-name'")
+
 (defvar org-nanowrimo-setup-reapply-editing-buffer-test-function nil "Hook that runs when testing to see if org-nanowrimo-setup-reapply-editing should run, useful to test to see if a mode is already enabled if you want to call a toggle.  Every hooked function must return t.")
 
 (defvar org-nanowrimo-setup-reapply-editing-adjustments-hook nil "Additional code to run when adjusting the editing right hand frame, this will run whenever that frame is entered due to the hook, so be careful.")
@@ -266,6 +280,83 @@ frame: (lambda () (set-frame-size (selected-frame) 160 45))")
   (let ((org-indirect-buffer-display 'new-frame))
     (org-tree-to-indirect-buffer ARG)))
 
+(defun org-nanowrimo-setup-search-for-headline (criteria)
+  "Search for org headline CRITERIA, return point or nil if not found."
+  (save-excursion
+    (if org-nanowrimo-setup-outline-buffer-name
+        (progn 
+          (set-buffer org-nanowrimo-setup-outline-buffer-name)
+          
+          (goto-char (point-min))
+          
+          (if (not (org-at-heading-p))
+              (org-next-visible-heading 1))
+          
+          ;; (message "%s" (nth 4 (org-heading-components)))))
+          
+          (while (and (not (eobp))
+                      (not (cl-equalp criteria (nth 4 (org-heading-components)))))
+            (org-next-visible-heading 1))
+          
+          (if (and (not (eobp))
+                   (org-at-heading-p))
+              (point)
+            nil)))))
+
+(defun org-nanowrimo-setup-tree-to-indirect-frame-by-name (heading)
+  "Wraps 'org-nanowrimo-setup-tree-to-indirect-frame', opens a fresh
+frame holding the first subheading as an indirect window by searching
+for a heading that matches HEADING."
+  (if org-nanowrimo-setup-outline-buffer-name
+      (progn
+        (let ((headpoint (org-nanowrimo-setup-search-for-headline heading)))
+          (if headpoint
+              (save-excursion
+                (save-restriction
+                  (set-buffer org-nanowrimo-setup-outline-buffer-name)
+                  (goto-char headpoint)
+                  (org-nanowrimo-setup-tree-to-indirect-frame))))))))
+
+(defun org-nanowrimo-setup-split-windows ()
+  "Select the org-nanowrimo-setup-file and setup the screen splits.
+Outline on left, editing on right and returns the two window IDs as a list,
+outline first, editing second.  You'll want to then use
+'org-nanowrimo-setup-tree-to-editing-buffer' or similar to open an indirect
+buffer.  This just sets up the windows."
+
+  ;; If already open clean up the editing window
+  (if (seq-contains (window-list)
+                    org-nanowrimo-setup-editing-window-id)
+      (save-excursion
+        (select-window org-nanowrimo-setup-editing-window-id)
+        (delete-window)))
+
+  ;; Select our outline buffer
+  (switch-to-buffer org-nanowrimo-setup-file)
+  (setq org-nanowrimo-setup-outline-buffer-name (buffer-name))
+  (setq org-nanowrimo-setup-outline-window-id (selected-window))
+
+  ;; Setup our editing split
+  (let ((fresh-window (split-window-horizontally
+                       org-nanowrimo-setup-initial-sidebar-size)))
+    (setq org-nanowrimo-setup-editing-window-id fresh-window)
+
+    ;; Lock the window
+    (if org-nanowrimo-setup-lock-outline-window-size
+        (window-preserve-size (window-normalize-window nil t) t t))
+
+    ;; Sometimes we wind up far along the line, ping back
+    (org-beginning-of-line)
+
+    ;; Save the window config
+    (setq org-nanowrimo-setup-window-configuration
+          (current-window-configuration))
+
+    ;; Return the outine and editing window ID in case someone wants them
+    (list org-nanowrimo-setup-outline-window-id
+          org-nanowrimo-setup-editing-window-id)))
+
+
 (defun org-nanowrimo-setup-tree-to-editing-buffer (&optional ARG)
   "Rework of 'org-tree-to-indirect-buffer' that maintains one editing buffer.
 It closes the current indirect buffer in the right hand editing pane and opens
@@ -311,8 +402,9 @@ Takes an optional ARG and ignores it."
     
     ;; oops we broke our window setup?  Force a reset, this is
     ;; perhaps a bit more destructive than we'd like
-    (if (not (seq-contains (window-list) org-nanowrimo-setup-editing-window-id))
-        (org-nanowrimo-setup-reset-window-configuration))
+    (if (not (seq-contains (window-list)
+                           org-nanowrimo-setup-editing-window-id))
+        (org-nanowrimo-setup-split-windows))
     
     ;; Hop to our editing window
     (if org-nanowrimo-setup-editing-window-id
@@ -644,15 +736,16 @@ and saying 'y'"
         (setq org-nanowrimo-setup-have-configured-frame t)
 
         ;; Start by setting up the goals and timer
-        (setq
-         org-nanowrimo-setup-goal-update-timer
-         (run-with-timer
-          0
-          600
-          (lambda ()
-            (org-nanowrimo-setup-calculate-counts org-nanowrimo-setup-word-goal
-                                                  org-nanowrimo-setup-start-date
-                                                  org-nanowrimo-setup-end-date))))
+        (if (not org-nanowrimo-setup-goal-update-timer)
+            (setq
+             org-nanowrimo-setup-goal-update-timer
+             (run-with-timer
+              0
+              600
+              (lambda ()
+                (org-nanowrimo-setup-calculate-counts org-nanowrimo-setup-word-goal
+                                                      org-nanowrimo-setup-start-date
+                                                      org-nanowrimo-setup-end-date)))))
 
 
         ;; Setup our hooks, some of these are expensive/inteferring so
@@ -691,45 +784,70 @@ and saying 'y'"
         ;; vertically, lock the outline frame if wanted, then open a
         ;; narrowed indirect buffer on the right
         (delete-other-windows)
-        (setq org-nanowrimo-setup-outline-window-id (selected-window))
-        (let ((fresh-window (split-window-horizontally
-                             org-nanowrimo-setup-initial-sidebar-size)))
 
-          (setq org-nanowrimo-setup-editing-window-id fresh-window)
+        ;; Initial window setup
+        (org-nanowrimo-setup-split-windows)
 
-          ;; Try and lock the outline window on the left if wanted
-          (if org-nanowrimo-setup-lock-outline-window-size
-              (window-preserve-size (window-normalize-window nil t) t t))
-          
-          ;; We're running in a hook so we don't seem to get our saved
-          ;; place before we do the redirect buffer opening so we always
-          ;; open at the top of the file.  To avoid this check to see if
-          ;; the save-place-mode variable is set and if so then call the
-          ;; hook manually, this is kind of messy.
-          (if save-place-mode (save-place-find-file-hook))
+        ;; And do our specifics to outline window
+        (select-window org-nanowrimo-setup-outline-window-id)
+        (if save-place-mode (save-place-find-file-hook))
 
-          ;; Sometimes we get the lines all shoved over so centre back
-          ;; on the left.
-          (org-beginning-of-line)
+        ;; Do specifics to editing window
+        (select-window org-nanowrimo-setup-editing-window-id)
+        (if save-place-mode (save-place-find-file-hook))
 
-          ;; Select the new window, then open the current tree as an
-          ;; indirect narrowed buffer in there specifically.  If you
-          ;; don't do it this way around then it works fine for GUI
-          ;; emacs but console emacs will then do *another* split and
-          ;; you end up with a 3 column mode.
-          (select-window fresh-window)
-          (if save-place-mode (save-place-find-file-hook))
+        ;; Open our indirect buffer
+        (org-nanowrimo-setup-tree-to-editing-buffer)
 
-          ;; Open in fresh window split
-          (org-nanowrimo-setup-tree-to-editing-buffer)
+        ;; Resave now we've got the editing buffer
+        (setq org-nanowrimo-setup-window-configuration
+              (current-window-configuration))
 
-          ;; Old method of opening the fresh split window
-          ;; (let ((org-indirect-buffer-display 'current-window))
-          ;;   (org-tree-to-indirect-buffer))
+        (run-hooks 'org-nanowrimo-setup-end-of-configure-window-hook))))
 
-          ;; Save the default config
-          (setq org-nanowrimo-setup-window-configuration
-                (current-window-configuration))))))
+
+
+        
+;;         (switch-to-buffer org-nanowrimo-setup-file)
+;;         (setq org-nanowrimo-setup-outline-window-id (selected-window))
+;;         (let ((fresh-window (split-window-horizontally
+;;                              org-nanowrimo-setup-initial-sidebar-size)))
+;; 
+;;           (setq org-nanowrimo-setup-editing-window-id fresh-window)
+;; 
+;;           ;; Try and lock the outline window on the left if wanted
+;;           (if org-nanowrimo-setup-lock-outline-window-size
+;;               (window-preserve-size (window-normalize-window nil t) t t))
+;;           
+;;           ;; We're running in a hook so we don't seem to get our saved
+;;           ;; place before we do the redirect buffer opening so we always
+;;           ;; open at the top of the file.  To avoid this check to see if
+;;           ;; the save-place-mode variable is set and if so then call the
+;;           ;; hook manually, this is kind of messy.
+;;           (if save-place-mode (save-place-find-file-hook))
+;; 
+;;           ;; Sometimes we get the lines all shoved over so centre back
+;;           ;; on the left.
+;;           (org-beginning-of-line)
+;; 
+;;           ;; Select the new window, then open the current tree as an
+;;           ;; indirect narrowed buffer in there specifically.  If you
+;;           ;; don't do it this way around then it works fine for GUI
+;;           ;; emacs but console emacs will then do *another* split and
+;;           ;; you end up with a 3 column mode.
+;;           (select-window fresh-window)
+;;           (if save-place-mode (save-place-find-file-hook))
+;; 
+;;           ;; Open in fresh window split
+;;           (org-nanowrimo-setup-tree-to-editing-buffer)
+;; 
+;;           ;; Old method of opening the fresh split window
+;;           ;; (let ((org-indirect-buffer-display 'current-window))
+;;           ;;   (org-tree-to-indirect-buffer))
+;; 
+;;           ;; Save the default config
+;;           (setq org-nanowrimo-setup-window-configuration
+;;                 (current-window-configuration))))))
 
 
 
