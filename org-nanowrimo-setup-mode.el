@@ -202,6 +202,9 @@ optionally goals based on other variables, see
 'org-nanowrimo-setup-export-show-moving-goal'.")
 
 (defvar org-nanowrimo-setup-theme-adjustments-hook nil "Hook to run before checking for GUI to make any theme tweaks/changes you want.")
+(add-hook 'org-nanowrimo-setup-theme-adjustments-hook
+          (lambda ()
+            (visual-line-mode -1)))
 
 (defvar org-nanowrimo-setup-gui-adjustments-hook
   nil
@@ -243,6 +246,7 @@ frame: (lambda () (set-frame-size (selected-frame) 160 45))")
 
 (defvar org-nanowrimo-setup-end-date
   (org-nanowrimo-setup-ymd-to-encode-time (format-time-string "%Y-11-30" (current-time)))
+  ;; (org-nanowrimo-setup-ymd-to-encode-time (format-time-string "%Y-12-01" (current-time)))
   "End date of the writing challenge, defaults to 30th November of the current year.")
 
 (defvar org-nanowrimo-setup-word-goal 50000 "Number of words you're aiming to hit between org-nanowrimo-setup-start-date and org-nanowrimo-setup-end-date.")
@@ -542,6 +546,7 @@ hook in case the user has any additonal checks."
                   ;; count function that matches the output of wc(1)
                   (let ((curr-words (org-nanowrimo-setup-count-words (point-min)
                                                                      (point-max))))
+                    ;; (message "Raw word count %s" curr-words)
                     (org-nanowrimo-setup-log-wordcount curr-words)
                     (org-nanowrimo-setup-message-wordcount curr-words)))))))))
 
@@ -568,8 +573,14 @@ hook in case the user has any additonal checks."
       
       (let* ((remaining (- org-nanowrimo-setup-word-goal
                            curr-words))
-             (todays-goal-count (/ remaining
-                                   org-nanowrimo-setup-days-remaining)))
+             (todays-goal-count (if
+                                    ;; Avoid dividing by zero
+                                    (= org-nanowrimo-setup-days-remaining 0)
+                                    remaining
+
+                                  ;; Otherwise do so
+                                  (/ remaining
+                                     org-nanowrimo-setup-days-remaining))))
         (setq curr-message
               (format "Wordcount %s, %s %s goal %s (Need %s avg | Remaining: %s words, %s days)"
                       curr-words
@@ -693,10 +704,20 @@ Accept the argument BACKEND which is probably provided by
                              (time-to-days start-date)))
              (days-remaining (- (time-to-days end-date)
                                 (time-to-days (current-time))))
-             (daily-goal (/ goal
-                            total-days))
-             (todays-goal (* daily-goal
-                             current-day)))
+             (daily-goal (round (/ (float goal)
+                                   (float total-days))))
+             (todays-goal-base (* daily-goal
+                                  current-day))
+             (todays-goal (if (> todays-goal-base goal)
+                              goal
+                            todays-goal-base)))
+        (message "total-days '%s'; current-day '%s'; days-remaining '%s'; daily-goal '%s'; todays-goal '%s';"
+                 total-days
+                 current-day
+                 days-remaining
+                 daily-goal
+                 todays-goal)
+        
              (setq org-nanowrimo-setup-todays-goal todays-goal
                    org-nanowrimo-setup-days-remaining days-remaining))))
 
@@ -790,6 +811,12 @@ and saying 'y'"
 
         ;; And do our specifics to outline window
         (select-window org-nanowrimo-setup-outline-window-id)
+
+        ;; We're running in a hook so we don't seem to get our saved
+        ;; place before we do the redirect buffer opening so we always
+        ;; open at the top of the file.  To avoid this check to see if
+        ;; the save-place-mode variable is set and if so then call the
+        ;; hook manually, this is kind of messy.
         (if save-place-mode (save-place-find-file-hook))
 
         ;; Do specifics to editing window
@@ -850,6 +877,23 @@ and saying 'y'"
 ;;                 (current-window-configuration))))))
 
 
+;;;###autoload
+(defun org-nanowrimo-setup-initialise (&optional nano-file-path)
+  "Sets up the auto-mode-list hook for starting the mode.
+Accept an optional argument NANO-FILE-PATH and if not set falls back to the 
+variable 'org-nanowrimo-setup-path'."
+  (let ((file-path (if nano-file-path
+                       nano-file-path
+                     org-nanowrimo-setup-path)))
+    (if (and file-path
+             (> (length file-path) 0)
+             (file-exists-p file-path))
+        (progn 
+          (setq org-nanowrimo-setup-file (file-name-nondirectory file-path))
+          (add-to-list 'auto-mode-alist
+                       (cons (format "^%s$" file-path)
+                             'org-nanowrimo-setup-mode)))
+      (error (format "org-nanowrimo-setup-initalise: Invalid path (%s), unset or non-existant" file-path)))))
 
 ;;;###autoload
 (define-minor-mode org-nanowrimo-setup-mode
@@ -862,37 +906,49 @@ and saying 'y'"
     (,(kbd "C-c C-x t") . org-nanowrimo-setup-outline-window-toggle)
     (,(kbd "C-c C-x r") . org-nanowrimo-setup-reset-window-configuration)
     (,(kbd "C-c C-x l") . org-nanowrimo-setup-tree-refresh-outline))
+
   :global t
+
   (if org-nanowrimo-setup-mode
       
       (progn
         (message "Enabling nanowrimo-setup-mode")
-
-        ;; (advice-add 'split-window-horizontally :before (lambda (&optional args) (message "Calling split-window-horizontally")))
-
         (setq org-nanowrimo-setup-have-configured-frame nil)
-        
         (if (and (> (length org-nanowrimo-setup-path) 0)
                  (file-exists-p org-nanowrimo-setup-path))
             (progn
               (setq org-nanowrimo-setup-file (file-name-nondirectory org-nanowrimo-setup-path))
+              (add-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window))))
 
-              ;; And hook into org-mode
-              ;; This should probably be
-              ;; (add-to-list 'auto-mode-alist '(org-nanowrimo-setup-path . org-nanowrimo-mode))
-              ;; Then just ending in calling org-nanowrimo-setup-configure-window here when the mode is enabled.
 
-              ;;(define-key org-mode-map (kbd "M-<mouse-down-1>")
-              ;;  'org-nanowrimo-setup-tree-to-indirect-frame)
+    ;; Doing it this way leaves org mode really messy unsure why.
+        ;; (org-mode)
+        ;;(sleep-for 1) ;; org is slow
+        ;; (org-nanowrimo-setup-configure-window))
 
-              (add-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window))
-
-          (error (format "Invalid org-nanowrimo-setup-path (%s), unset or non-existant" org-nanowrimo-setup-path))))
+;;         ;; (advice-add 'split-window-horizontally :before (lambda (&optional args) (message "Calling split-window-horizontally")))
+;;         
+;;         (if (and (> (length org-nanowrimo-setup-path) 0)
+;;                  (file-exists-p org-nanowrimo-setup-path))
+;;             (progn
+;;               (setq org-nanowrimo-setup-file (file-name-nondirectory org-nanowrimo-setup-path))
+;; 
+;;               ;; And hook into org-mode
+;;               ;; This should probably be
+;;               ;; (add-to-list 'auto-mode-alist '(org-nanowrimo-setup-path . org-nanowrimo-mode))
+;;               ;; Then just ending in calling org-nanowrimo-setup-configure-window here when the mode is enabled.
+;; 
+;;               ;;(define-key org-mode-map (kbd "M-<mouse-down-1>")
+;;               ;;  'org-nanowrimo-setup-tree-to-indirect-frame)
+;; 
+;;               (add-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window))
+;; 
+;;           (error (format "Invalid org-nanowrimo-setup-path (%s), unset or non-existant" org-nanowrimo-setup-path))))
 
     ;; Remove all hooks and everything we setup
     (progn
       (message "Switching off nanowrimo-setup-mode")
-      (remove-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window)
+      ;; (remove-hook 'org-mode-hook 'org-nanowrimo-setup-configure-window)
 
       ;; Remove the timer for updating the counts
       (if org-nanowrimo-setup-goal-update-timer
